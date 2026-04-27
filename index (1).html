@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mason Free Food Finder 🍕</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  /* ── Reset & Tokens ─────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0d0d;
+    --surface:   #161616;
+    --border:    #2a2a2a;
+    --accent:    #f0e04a;       /* yolk yellow */
+    --accent2:   #ff6b35;       /* hot sauce orange */
+    --text:      #f0ede6;
+    --muted:     #888;
+    --green:     #4ade80;
+    --red:       #f87171;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius:    12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Noise grain overlay ────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  /* ── Layout ─────────────────────────────────── */
+  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
+
+  /* ── Header ─────────────────────────────────── */
+  header {
+    padding: 52px 0 36px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(240,224,74,.1);
+    border: 1px solid rgba(240,224,74,.25);
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    width: fit-content;
+  }
+  h1 {
+    font-size: clamp(2.4rem, 7vw, 4rem);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -.02em;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Stats bar ──────────────────────────────── */
+  .stats-bar {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    flex: 1; min-width: 120px;
+  }
+  .stat-num {
+    font-size: 1.9rem; font-weight: 800;
+    line-height: 1;
+  }
+  .stat-num.yellow { color: var(--accent); }
+  .stat-num.orange { color: var(--accent2); }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: .06em;
+  }
+
+  /* ── Filter tabs ────────────────────────────── */
+  .filters {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .filter-btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all .15s;
+    letter-spacing: .04em;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 500;
+  }
+
+  /* ── Card grid ──────────────────────────────── */
+  .grid { display: flex; flex-direction: column; gap: 14px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: start;
+    transition: border-color .2s, transform .15s;
+    animation: fadeUp .35s ease both;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+  .card-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex; gap: 14px; flex-wrap: wrap;
+  }
+  .card-meta span { display: flex; align-items: center; gap: 4px; }
+  .card-desc {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #666;
+    margin-top: 10px;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── Likelihood meter ───────────────────────── */
+  .meter-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 64px; }
+  .meter-pct {
+    font-size: 1.45rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    line-height: 1;
+  }
+  .meter-bar-bg {
+    width: 56px; height: 5px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .meter-bar {
+    height: 100%; border-radius: 99px;
+    transition: width .6s ease;
+  }
+  .meter-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* likelihood color tiers */
+  .tier-high   .meter-pct { color: var(--green); }
+  .tier-high   .meter-bar { background: var(--green); }
+  .tier-mid    .meter-pct { color: var(--accent); }
+  .tier-mid    .meter-bar { background: var(--accent); }
+  .tier-low    .meter-pct { color: var(--accent2); }
+  .tier-low    .meter-bar { background: var(--accent2); }
+  .tier-none   .meter-pct { color: var(--muted); }
+  .tier-none   .meter-bar { background: var(--border); }
+
+  /* ── Empty / Loading states ─────────────────── */
+  .state-box {
+    text-align: center;
+    padding: 80px 0;
+    font-family: var(--font-mono);
+    color: var(--muted);
+  }
+  .state-box .big { font-size: 3rem; margin-bottom: 12px; }
+  .state-box p { font-size: 13px; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Footer ─────────────────────────────────── */
+  footer {
+    position: relative; z-index: 1;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="tag">George Mason University</span>
+    <h1>Free Food<br/><span>Finder</span></h1>
+    <p class="subtitle" id="last-updated">Fetching latest events…</p>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-num yellow" id="stat-today">—</div>
+      <div class="stat-label">today's events</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num orange" id="stat-high">—</div>
+      <div class="stat-label">high confidence</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-total">—</div>
+      <div class="stat-label">total upcoming</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="today">Today</button>
+    <button class="filter-btn" data-filter="week">This Week</button>
+    <button class="filter-btn" data-filter="high">High Confidence</button>
+    <button class="filter-btn" data-filter="all">All Events</button>
+  </div>
+
+  <div class="grid" id="grid">
+    <div class="state-box">
+      <div class="spinner"></div>
+      <p>Sniffing out free food…</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Data from <a href="https://mason360.gmu.edu/events" target="_blank">Mason360</a> · 
+  Updates every 3 hours · 
+  Built for hungry students
+</footer>
+
+<script>
+// ────────────────────────────────────────────────────────
+// CONFIG — replace with your actual Supabase project values
+// These are safe to expose in frontend code (anon/public key)
+// ────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+// ────────────────────────────────────────────────────────
+
+let allEvents  = [];
+let activeFilter = "today";
+
+// ── Fetch from Supabase ──────────────────────────────────
+async function fetchEvents() {
+  try {
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/free_food_events?select=*&order=likelihood.desc,date_added.desc&limit=200`,
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    allEvents = await resp.json();
+    renderStats();
+    renderCards(activeFilter);
+    updateTimestamp();
+  } catch (err) {
+    document.getElementById("grid").innerHTML = `
+      <div class="state-box">
+        <div class="big">😬</div>
+        <p>Couldn't load events.<br/>Check your Supabase config.</p>
+      </div>`;
+    console.error(err);
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────
+function todayStr() {
+  return new Date().toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
+}
+
+function isToday(event) {
+  const t = todayStr().toLowerCase();
+  return (event.event_day || "").toLowerCase().includes(
+    new Date().toLocaleDateString("en-US", { month:"long", day:"numeric" }).toLowerCase()
+  );
+}
+
+function isThisWeek(event) {
+  // If the day string contains a date within the next 7 days
+  const day = (event.event_day || "").toLowerCase();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const s = d.toLocaleDateString("en-US", { month:"long", day:"numeric" }).toLowerCase();
+    if (day.includes(s)) return true;
+  }
+  return false;
+}
+
+function tierClass(pct) {
+  if (pct >= 70) return "tier-high";
+  if (pct >= 45) return "tier-mid";
+  if (pct >= 20) return "tier-low";
+  return "tier-none";
+}
+
+// ── Stats ────────────────────────────────────────────────
+function renderStats() {
+  const todayCount = allEvents.filter(isToday).length;
+  const highCount  = allEvents.filter(e => (e.likelihood || 0) >= 70).length;
+  document.getElementById("stat-today").textContent = todayCount;
+  document.getElementById("stat-high").textContent  = highCount;
+  document.getElementById("stat-total").textContent = allEvents.length;
+}
+
+// ── Cards ────────────────────────────────────────────────
+function renderCards(filter) {
+  let events = [...allEvents];
+
+  if (filter === "today")  events = events.filter(isToday);
+  if (filter === "week")   events = events.filter(isThisWeek);
+  if (filter === "high")   events = events.filter(e => (e.likelihood || 0) >= 70);
+  // "all" → no filter
+
+  const grid = document.getElementById("grid");
+
+  if (events.length === 0) {
+    grid.innerHTML = `
+      <div class="state-box">
+        <div class="big">🍽️</div>
+        <p>${filter === "today" ? "No free food found for today.<br/>Check back soon!" : "Nothing in this view yet."}</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = events.map((e, idx) => {
+    const pct   = e.likelihood ?? 0;
+    const tier  = tierClass(pct);
+    const delay = Math.min(idx * 40, 400);
+    const desc  = e.description
+      ? e.description.replace(/\n+/g, " ").slice(0, 220) + (e.description.length > 220 ? "…" : "")
+      : "";
+    const price = e.price && e.price !== "free" && e.price !== ""
+      ? `<span>💰 ${e.price}</span>` : `<span style="color:var(--green)">✓ Free</span>`;
+
+    return `
+      <a class="card ${tier}" href="${e.link}" target="_blank" rel="noopener"
+         style="animation-delay:${delay}ms">
+        <div>
+          <div class="card-name">${e.event_name || "Unnamed Event"}</div>
+          <div class="card-meta">
+            <span>📅 ${e.event_day || "TBD"}</span>
+            <span>⏰ ${e.start_time || "?"} – ${e.end_time || "?"}</span>
+            ${price}
+          </div>
+          ${desc ? `<div class="card-desc">${desc}</div>` : ""}
+        </div>
+        <div class="meter-wrap">
+          <div class="meter-pct">${pct}%</div>
+          <div class="meter-bar-bg">
+            <div class="meter-bar" style="width:${pct}%"></div>
+          </div>
+          <div class="meter-label">food odds</div>
+        </div>
+      </a>`;
+  }).join("");
+}
+
+// ── Timestamp ────────────────────────────────────────────
+function updateTimestamp() {
+  const el = document.getElementById("last-updated");
+  const t  = new Date().toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" });
+  el.textContent = `Last updated ${t} · auto-refreshes every 3 hrs`;
+}
+
+// ── Filter buttons ───────────────────────────────────────
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeFilter = btn.dataset.filter;
+    renderCards(activeFilter);
+  });
+});
+
+// ── Init ─────────────────────────────────────────────────
+fetchEvents();
+setInterval(fetchEvents, 3 * 60 * 60 * 1000); // re-fetch every 3 hours
+</script>
+</body>
+</html>
