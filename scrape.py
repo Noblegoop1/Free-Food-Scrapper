@@ -14,8 +14,8 @@ from bs4 import BeautifulSoup
 # SUPABASE_URL  e.g. https://xxxx.supabase.co
 # SUPABASE_KEY  your anon/public key
 # ─────────────────────────────────────────────
-SUPABASE_URL = os.environ["https://ekpyhwdotvhshamccnts.supabase.co"]
-SUPABASE_KEY = os.environ["sb_publishable_54vTpJiLkRKH3OmQ7VdaQQ_uVThHozD"]
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 SUPABASE_HEADERS = {
     "apikey": SUPABASE_KEY,
