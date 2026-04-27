@@ -14,8 +14,8 @@ from bs4 import BeautifulSoup
 # SUPABASE_URL  e.g. https://xxxx.supabase.co
 # SUPABASE_KEY  your anon/public key
 # ─────────────────────────────────────────────
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
 SUPABASE_HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -47,7 +47,8 @@ FOOD_KEYWORDS = [
 STRONG_KEYWORDS = [
     "free food", "free lunch", "free dinner", "free breakfast",
     "catering", "refreshments provided", "food provided",
-    "light refreshments", "complimentary food",
+    "light refreshments", "complimentary food", "food will be provided",
+    "we will provide food", "enjoy food", "enjoy free",
 ]
 
 FREE_PRICE_PATTERNS = ["free", "0", "$0", "no cost", ""]
@@ -55,29 +56,58 @@ FREE_PRICE_PATTERNS = ["free", "0", "$0", "no cost", ""]
 def compute_likelihood(event: dict) -> int:
     """
     Returns a 0-100 likelihood score that free food will actually be there.
+
     Scoring rubric:
-      - Price field is free/empty           → +40
-      - Strong food keyword in description  → +35
-      - Soft food keyword in description    → +20
-      - Event is today                      → +5  (bonus confidence)
-    Capped at 100.
+      Base (price is free/empty)            → 30 pts
+      Strong keyword ("free food", etc.)    → +40 pts  (very explicit)
+      Specific food item named              → +25 pts  (pizza, boba, etc.)
+      Soft keyword (food/drinks/snacks)     → +15 pts  (implied)
+      "free" appears in description text    → +10 pts
+      Event is today                        → +5 pts   (recency bonus)
+
+    Examples:
+      "Free food" in desc + free price = 30+40 = 70  (green)
+      "Pizza and boba" + free price    = 30+25 = 55  (yellow)
+      "Snacks" + free price            = 30+15 = 45  (yellow)
+      Free price only, no food mention  = 30    (orange — don't know)
     """
     score = 0
     price = (event.get("Price") or "").strip().lower()
     desc  = (event.get("description") or "").lower()
-    day   = (event.get("Day") or "").lower()
+    name  = (event.get("EventName") or "").lower()
+    combined = desc + " " + name
 
+    # Base: free event
     if any(p == price for p in FREE_PRICE_PATTERNS):
+        score += 30
+
+    # Tier 1: explicitly mentions free food
+    if any(kw in combined for kw in STRONG_KEYWORDS):
         score += 40
+    else:
+        # Tier 2: specific food item named (high confidence it's actually food)
+        specific = ["pizza", "boba", "wings", "tacos", "sushi", "burgers",
+                    "cookies", "donuts", "bagels", "sandwiches", "bbq",
+                    "ice cream", "cake", "coffee", "tea", "juice"]
+        if any(kw in combined for kw in specific):
+            score += 25
+        # Tier 3: generic food word
+        elif any(kw in combined for kw in FOOD_KEYWORDS):
+            score += 15
 
-    if any(kw in desc for kw in STRONG_KEYWORDS):
-        score += 35
-    elif any(kw in desc for kw in FOOD_KEYWORDS):
-        score += 20
+    # Bonus: word "free" appears in description body
+    if "free" in desc:
+        score += 10
 
-    today_str = datetime.now().strftime("%A, %B %-d").lower()  # e.g. "monday, april 7"
-    if today_str in day.lower():
-        score += 5
+    # Bonus: event is today
+    try:
+        today_fmt = datetime.now().strftime("%-m/%-d").lower()
+        alt_fmt   = datetime.now().strftime("%b %-d").lower()
+        day_str   = (event.get("Day") or "").lower()
+        if today_fmt in day_str or alt_fmt in day_str:
+            score += 5
+    except Exception:
+        pass
 
     return min(score, 100)
 
