@@ -127,7 +127,7 @@
   }
 
   /* ── Card grid ──────────────────────────────── */
-  .grid { display: flex; flex-direction: column; gap: 14px; }
+  .grid { display: flex; flex-direction: column; gap: 25px; }
 
   .card {
     background: var(--surface);
@@ -286,9 +286,7 @@
 </div>
 
 <footer>
-  Data from <a href="https://mason360.gmu.edu/events" target="_blank">Mason360</a> · 
-  Updates every 3 hours · 
-  Built for hungry students
+  Data from <a href="https://mason360.gmu.edu/events" target="_blank">Mason360</a>
 </footer>
 
 <script>
@@ -421,7 +419,7 @@ function renderCards(filter) {
           <div class="card-name">${e.event_name || "Unnamed Event"}</div>
           <div class="card-meta">
             <span>📅 ${e.event_day || "TBD"}</span>
-            <span>⏰ ${e.start_time || "?"} – ${e.end_time || "?"}</span>
+            <span>⏰ ${e.start_time || "?"} to ${e.end_time || "?"}</span>
             ${price}
           </div>
           ${desc ? `<div class="card-desc">${desc}</div>` : ""}
