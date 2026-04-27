@@ -326,26 +326,46 @@ async function fetchEvents() {
 }
 
 // ── Helpers ──────────────────────────────────────────────
-function todayStr() {
-  return new Date().toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
+
+// Parse the event_day string into a JS Date.
+// Handles formats like:
+//   "Mon, Apr 27, 2026"   (from Mason360 scraper)
+//   "Monday, April 27"    (long form, no year)
+//   "April 27, 2026"      (no weekday)
+function parseEventDate(event) {
+  const raw = (event.event_day || "").trim();
+  if (!raw) return null;
+
+  // Try native parse first (works for most formats)
+  const currentYear = new Date().getFullYear();
+  // Append current year if no 4-digit year present
+  const withYear = /\d{4}/.test(raw) ? raw : `${raw}, ${currentYear}`;
+  const d = new Date(withYear);
+  if (!isNaN(d)) return d;
+
+  return null;
+}
+
+function sameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth()    === b.getMonth()    &&
+         a.getDate()     === b.getDate();
 }
 
 function isToday(event) {
-  const t = todayStr().toLowerCase();
-  return (event.event_day || "").toLowerCase().includes(
-    new Date().toLocaleDateString("en-US", { month:"long", day:"numeric" }).toLowerCase()
-  );
+  const d = parseEventDate(event);
+  if (!d) return false;
+  return sameDay(d, new Date());
 }
 
 function isThisWeek(event) {
-  // If the day string contains a date within the next 7 days
-  const day = (event.event_day || "").toLowerCase();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(); d.setDate(d.getDate() + i);
-    const s = d.toLocaleDateString("en-US", { month:"long", day:"numeric" }).toLowerCase();
-    if (day.includes(s)) return true;
-  }
-  return false;
+  const d = parseEventDate(event);
+  if (!d) return false;
+  const now   = new Date();
+  const end   = new Date(); end.setDate(now.getDate() + 7);
+  // zero out times for clean comparison
+  d.setHours(0,0,0,0); now.setHours(0,0,0,0); end.setHours(0,0,0,0);
+  return d >= now && d <= end;
 }
 
 function tierClass(pct) {
